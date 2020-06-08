@@ -4,9 +4,8 @@ package cyberprobe
 import (
 	"os"
 	"github.com/google/uuid"
-	"github.com/apache/pulsar/pulsar-client-go/pulsar"
+	"github.com/apache/pulsar-client-go/pulsar"
 	"github.com/golang/protobuf/proto"
-	"runtime"
 	"log"
 )
 
@@ -30,8 +29,6 @@ func (a *Analytic) Init(binding string, outputs []string, h Handler) {
 
 	client, err := pulsar.NewClient(pulsar.ClientOptions{
 		URL:                     svc_addr,
-		OperationTimeoutSeconds: 5,
-		MessageListenerThreads:  runtime.NumCPU(),
 	})
 	if err != nil {
 		log.Fatalf("Could not instantiate Pulsar client: %v", err)
@@ -84,7 +81,7 @@ func (a *EventAnalytic) Handle(msg pulsar.Message) {
 	ev := &Event{}
 	err := proto.Unmarshal(msg.Payload(), ev)
 	if err != nil {
-		log.Fatalf("Error:", err)
+		log.Fatalf("Error: %v", err)
 	}
 	a.handler.Event(ev, msg.Properties())
 }
