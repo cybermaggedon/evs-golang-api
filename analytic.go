@@ -56,8 +56,10 @@ func (a *Analytic) Init(binding string, outputs []string, h Handler) {
 
 	metric_port, ok := os.LookupEnv("METRICS_PORT")
 	if ok {
-		http.Handle("/metrics", promhttp.Handler())
-		http.ListenAndServe(":"+metric_port, nil)
+		go func() {
+			http.Handle("/metrics", promhttp.Handler())
+			log.Fatal(http.ListenAndServe(":"+metric_port, nil))
+		}()
 	}
 
 	svc_addr, ok := os.LookupEnv("PULSAR_BROKER")
