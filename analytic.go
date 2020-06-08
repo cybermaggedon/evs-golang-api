@@ -101,9 +101,10 @@ func (a *Analytic) Run() {
 		event_size.Observe(float64(len(cm.Message.Payload())))
 
 		timer := prometheus.NewTimer(request_time)
-		defer timer.ObserveDuration()
 
 		err := a.handler.Handle(msg)
+
+		timer.ObserveDuration()
 
 		if err == nil {
 			events.With(prometheus.Labels{"state": "success"}).Inc()
