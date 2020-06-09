@@ -1,26 +1,17 @@
 package cyberprobe
 
 import (
+	"context"
 	"github.com/apache/pulsar-client-go/pulsar"
+	"github.com/golang/protobuf/proto"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"log"
 	"net/http"
 	"os"
-	//        "github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/golang/protobuf/proto"
-	"log"
+	"time"
 )
-
-type Handler interface {
-	Handle(msg pulsar.Message) error
-}
-
-type Analytic struct {
-	handler  Handler
-	ch       chan pulsar.ConsumerMessage
-	consumer pulsar.Consumer
-}
 
 var (
 	request_time = prometheus.NewSummary(prometheus.SummaryOpts{
@@ -38,19 +29,24 @@ var (
 		Name: "events_total",
 		Help: "Events processed total",
 	}, []string{"state"})
-
-/*	info = prometheus.NewInfo(prometheus.Opts{
-	Name: "configuration",
-	Help: "Configuration settings",
-})*/
 )
+
+type Handler interface {
+	Handle(msg pulsar.Message) error
+}
+
+type Analytic struct {
+	handler  Handler
+	ch       chan pulsar.ConsumerMessage
+	consumer pulsar.Consumer
+	outputs  map[string]pulsar.Producer
+}
 
 func (a *Analytic) Init(binding string, outputs []string, h Handler) {
 
 	prometheus.MustRegister(request_time)
 	prometheus.MustRegister(event_size)
 	prometheus.MustRegister(events)
-	//	prometheus.MustRegister(info)
 
 	a.handler = h
 
@@ -87,6 +83,35 @@ func (a *Analytic) Init(binding string, outputs []string, h Handler) {
 	a.consumer, err = client.Subscribe(consumerOpts)
 	if err != nil {
 		log.Fatalf("Could not establish subscription: %v", err)
+	}
+
+	for _, output := range outputs {
+		topic := "persistent://public/default/"
+		producer, err := client.CreateProducer(pulsar.ProducerOptions{
+			Topic: topic,
+		})
+		if err != nil {
+			log.Fatalf("Could not instantiate Pulsar producer: %v", err)
+		}
+		a.outputs[output] = producer
+	}
+
+}
+
+func (a *Analytic) Output(msg pulsar.ProducerMessage) {
+
+	for _, producer := range a.outputs {
+
+		for {
+			_, err := producer.Send(context.Background(), &msg)
+			if err != nil {
+				log.Printf("Pulsar Send: %v (will retry)", err)
+				time.Sleep(time.Second)
+				continue
+			}
+			break
+		}
+
 	}
 
 }
@@ -137,4 +162,23 @@ func (a *EventAnalytic) Handle(msg pulsar.Message) error {
 		return err
 	}
 	return a.handler.Event(ev, msg.Properties())
+}
+
+func (a *EventAnalytic) OutputEvent(ev Event, properties map[string]string) error {
+
+	b, err := proto.Marshal(&ev)
+	if err != nil {
+		return err
+	}
+
+	msg := pulsar.ProducerMessage{
+		Payload:    b,
+		Properties: properties,
+		Key:        ev.Id,
+	}
+
+	a.Output(msg)
+
+	return nil
+
 }
