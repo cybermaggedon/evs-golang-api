@@ -1,7 +1,12 @@
+// There are two levels of analytic API here: Analytic wraps Pulsar and Prometheus client
+// in this API, messages are passed around as Pulsar messages.  EventAnalytic wraps
+// Analytic, and expects messages to be protobuf-encoded cyberprobe events, protobuf
+// encode/decode is taken care of for the caller.
 package cyberprobe
 
 import (
 	"context"
+	"fmt"
 	"github.com/apache/pulsar-client-go/pulsar"
 	"github.com/golang/protobuf/proto"
 	"github.com/google/uuid"
@@ -11,20 +16,31 @@ import (
 	"net/http"
 	"os"
 	"time"
-	"fmt"
 )
 
 const (
+
+	// Pulsar topic persistency, should be persistent or non-persistent
 	persistence = "persistent"
-	tenant = "public"
-	namespace = "default"
+
+	// Tenant, default is public, only relevant in a multi-tenant deployment
+	tenant      = "public"
+
+	// Namespace, default is the default.
+	namespace   = "default"
+
 )
 
+// Prometheus metrics
 var (
+
+	// Summary metric keeps track of request duration
 	request_time = prometheus.NewSummary(prometheus.SummaryOpts{
 		Name: "event_processing_time",
 		Help: "Time spent processing event",
 	})
+
+	// Histogram metric keeps track of event sizes
 	event_size = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name: "event_size",
 		Help: "Size of event message",
@@ -32,31 +48,48 @@ var (
 			10000, 25000, 50000, 100000, 250000, 500000,
 			1000000, 2500000},
 	})
+
+	// Counter metric, keeps track of success/failure counts.
 	events = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "events_total",
 		Help: "Events processed total",
 	}, []string{"state"})
+
 )
 
+// Users of the Analytic API implement the Handler interface.
 type Handler interface {
 	Handle(msg pulsar.Message) error
 }
 
+// Describes  Users of the Analytic API implement the Handler interface.
 type Analytic struct {
+
+	// Handler, interface is invoked when events are received.
 	handler  Handler
+
+	// Communication channel used to deliver messages.
 	ch       chan pulsar.ConsumerMessage
+
+	// Pulsar Consumer
 	consumer pulsar.Consumer
+
+	// Output producers, is a map from output name to producer.
 	outputs  map[string]pulsar.Producer
+
 }
 
+// Initialise the Analytic.  
 func (a *Analytic) Init(binding string, outputs []string, h Handler) {
 
+	// Register prometheus metrics
 	prometheus.MustRegister(request_time)
 	prometheus.MustRegister(event_size)
 	prometheus.MustRegister(events)
 
 	a.handler = h
 
+	// Launch prometheus web server
 	metric_port, ok := os.LookupEnv("METRICS_PORT")
 	if ok {
 		go func() {
@@ -65,11 +98,13 @@ func (a *Analytic) Init(binding string, outputs []string, h Handler) {
 		}()
 	}
 
+	// Get Pulsar broker location
 	svc_addr, ok := os.LookupEnv("PULSAR_BROKER")
 	if !ok {
 		svc_addr = "pulsar://localhost:6650"
 	}
 
+	// Create Pulsar client
 	client, err := pulsar.NewClient(pulsar.ClientOptions{
 		URL: svc_addr,
 	})
@@ -77,11 +112,16 @@ func (a *Analytic) Init(binding string, outputs []string, h Handler) {
 		log.Fatalf("Could not instantiate Pulsar client: %v", err)
 	}
 
+	// Create Pulsar incoming message queue, 1000 messages backlog
 	a.ch = make(chan pulsar.ConsumerMessage, 1000)
+
+	// Subscriber name is a new UUID
 	subs := uuid.New().String()
 
+	// Create topic name
 	topic := fmt.Sprintf("%s://%s/%s/%s", persistence, tenant, namespace, binding)
 
+	// Consumer options
 	consumerOpts := pulsar.ConsumerOptions{
 		Topic:            topic,
 		SubscriptionName: subs,
@@ -89,13 +129,14 @@ func (a *Analytic) Init(binding string, outputs []string, h Handler) {
 		MessageChannel:   a.ch,
 	}
 
+	// Create consumer by subscribing to the topic
 	a.consumer, err = client.Subscribe(consumerOpts)
 	if err != nil {
 		log.Fatalf("Could not establish subscription: %v", err)
 	}
 
+	// Initialise outputs map, and create producers for each output
 	a.outputs = make(map[string]pulsar.Producer)
-
 	for _, output := range outputs {
 		topic = fmt.Sprintf("%s://%s/%s/%s", persistence, tenant, namespace, output)
 		producer, err := client.CreateProducer(pulsar.ProducerOptions{
@@ -109,6 +150,7 @@ func (a *Analytic) Init(binding string, outputs []string, h Handler) {
 
 }
 
+// Output a message by iterating over all outputs.  Retries until message is sent.
 func (a *Analytic) Output(msg pulsar.ProducerMessage) {
 
 	for _, producer := range a.outputs {
@@ -127,45 +169,59 @@ func (a *Analytic) Output(msg pulsar.ProducerMessage) {
 
 }
 
+// Go into the 'run' state getting messages from the consumer and delivering to Handler.
 func (a *Analytic) Run() {
 
 	defer a.consumer.Close()
 
 	for cm := range a.ch {
+
+		// Message from queue
 		msg := cm.Message
 
+		// Update metric with payload length
 		event_size.Observe(float64(len(cm.Message.Payload())))
 
+		// Create a timer to time request duration
 		timer := prometheus.NewTimer(request_time)
 
+		// Delegate message handling to the Handler interface.
 		err := a.handler.Handle(msg)
 
+		// Update metric with duration
 		timer.ObserveDuration()
 
+		// Record error state
 		if err == nil {
 			events.With(prometheus.Labels{"state": "success"}).Inc()
 		} else {
 			events.With(prometheus.Labels{"state": "failure"}).Inc()
+			log.Printf("Error: %v\n", err)
 		}
 		a.consumer.Ack(msg)
 	}
 
 }
 
+// Users of the EventAnalytic API implement the Handler interface.
 type EventHandler interface {
 	Event(*Event, map[string]string) error
 }
 
+// EventAnalytic API wraps Pulsar communication and cyberprobe event decoding
 type EventAnalytic struct {
 	Analytic
 	handler EventHandler
 }
 
+// Initialise the analyitc
 func (a *EventAnalytic) Init(binding string, outputs []string, e EventHandler) {
 	a.Analytic.Init(binding, outputs, a)
 	a.handler = e
 }
 
+// Internal Handler implementation of EventAnalytic, decodes messages as cyberprobe events
+// and delegates to the EventHandler interface for processing.
 func (a *EventAnalytic) Handle(msg pulsar.Message) error {
 	ev := &Event{}
 	err := proto.Unmarshal(msg.Payload(), ev)
@@ -175,19 +231,23 @@ func (a *EventAnalytic) Handle(msg pulsar.Message) error {
 	return a.handler.Event(ev, msg.Properties())
 }
 
+// Output an event by iterating over all outputs
 func (a *EventAnalytic) OutputEvent(ev *Event, properties map[string]string) error {
 
+	// Marshal event to protobuf
 	b, err := proto.Marshal(ev)
 	if err != nil {
 		return err
 	}
 
+	// Create a ProducerMessage
 	msg := pulsar.ProducerMessage{
 		Payload:    b,
 		Properties: properties,
 		Key:        ev.Id,
 	}
 
+	// Delegate to Analytic.Output to output
 	a.Output(msg)
 
 	return nil
