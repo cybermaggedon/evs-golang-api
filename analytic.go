@@ -94,6 +94,8 @@ func (a *Analytic) Init(binding string, outputs []string, h Handler) {
 		log.Fatalf("Could not establish subscription: %v", err)
 	}
 
+	a.outputs = make(map[string]pulsar.Producer)
+
 	for _, output := range outputs {
 		topic = fmt.Sprintf("%s://%s/%s/%s", persistence, tenant, namespace, output)
 		producer, err := client.CreateProducer(pulsar.ProducerOptions{
