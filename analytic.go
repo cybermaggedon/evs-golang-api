@@ -11,6 +11,13 @@ import (
 	"net/http"
 	"os"
 	"time"
+	"fmt"
+)
+
+const (
+	persistence = "persistent"
+	tenant = "public"
+	namespace = "default"
 )
 
 var (
@@ -73,8 +80,10 @@ func (a *Analytic) Init(binding string, outputs []string, h Handler) {
 	a.ch = make(chan pulsar.ConsumerMessage, 1000)
 	subs := uuid.New().String()
 
+	topic := fmt.Sprintf("%s://%s/%s/%s", persistence, tenant, namespace, binding)
+
 	consumerOpts := pulsar.ConsumerOptions{
-		Topic:            "persistent://public/default/" + binding,
+		Topic:            topic,
 		SubscriptionName: subs,
 		Type:             pulsar.Exclusive,
 		MessageChannel:   a.ch,
@@ -86,7 +95,7 @@ func (a *Analytic) Init(binding string, outputs []string, h Handler) {
 	}
 
 	for _, output := range outputs {
-		topic := "persistent://public/default/"
+		topic = fmt.Sprintf("%s://%s/%s/%s", persistence, tenant, namespace, output)
 		producer, err := client.CreateProducer(pulsar.ProducerOptions{
 			Topic: topic,
 		})
