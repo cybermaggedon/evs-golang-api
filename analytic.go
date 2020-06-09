@@ -173,9 +173,9 @@ func (a *EventAnalytic) Handle(msg pulsar.Message) error {
 	return a.handler.Event(ev, msg.Properties())
 }
 
-func (a *EventAnalytic) OutputEvent(ev Event, properties map[string]string) error {
+func (a *EventAnalytic) OutputEvent(ev *Event, properties map[string]string) error {
 
-	b, err := proto.Marshal(&ev)
+	b, err := proto.Marshal(ev)
 	if err != nil {
 		return err
 	}
