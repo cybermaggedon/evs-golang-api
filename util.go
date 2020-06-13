@@ -1,9 +1,8 @@
-
 package cyberprobe
 
 import (
-	"net"
 	"encoding/binary"
+	"net"
 	"strconv"
 )
 
@@ -47,4 +46,3 @@ func AddressToString(addr *Address) string {
 		return ""
 	}
 }
-

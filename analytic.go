@@ -24,11 +24,10 @@ const (
 	persistence = "persistent"
 
 	// Tenant, default is public, only relevant in a multi-tenant deployment
-	tenant      = "public"
+	tenant = "public"
 
 	// Namespace, default is the default.
-	namespace   = "default"
-
+	namespace = "default"
 )
 
 // Users of the Analytic API implement the Handler interface.
@@ -40,26 +39,24 @@ type Handler interface {
 type Analytic struct {
 
 	// Handler, interface is invoked when events are received.
-	handler  Handler
+	handler Handler
 
 	// Communication channel used to deliver messages.
-	ch       chan pulsar.ConsumerMessage
+	ch chan pulsar.ConsumerMessage
 
 	// Pulsar Consumer
 	consumer pulsar.Consumer
 
 	// Output producers, is a map from output name to producer.
-	outputs  map[string]pulsar.Producer
-	
+	outputs map[string]pulsar.Producer
+
 	// Prometheus metrics
 	request_time prometheus.Summary
-	event_size prometheus.Histogram
-	events *prometheus.CounterVec
-
-
+	event_size   prometheus.Histogram
+	events       *prometheus.CounterVec
 }
 
-// Initialise the Analytic.  
+// Initialise the Analytic.
 func (a *Analytic) Init(binding string, outputs []string, h Handler) {
 
 	// Summary metric keeps track of request duration
