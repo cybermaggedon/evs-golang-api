@@ -31,32 +31,6 @@ const (
 
 )
 
-// Prometheus metrics
-var (
-
-	// Summary metric keeps track of request duration
-	request_time = prometheus.NewSummary(prometheus.SummaryOpts{
-		Name: "event_processing_time",
-		Help: "Time spent processing event",
-	})
-
-	// Histogram metric keeps track of event sizes
-	event_size = prometheus.NewHistogram(prometheus.HistogramOpts{
-		Name: "event_size",
-		Help: "Size of event message",
-		Buckets: []float64{25, 50, 100, 250, 500, 1000, 2500, 5000,
-			10000, 25000, 50000, 100000, 250000, 500000,
-			1000000, 2500000},
-	})
-
-	// Counter metric, keeps track of success/failure counts.
-	events = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "events_total",
-		Help: "Events processed total",
-	}, []string{"state"})
-
-)
-
 // Users of the Analytic API implement the Handler interface.
 type Handler interface {
 	Handle(msg pulsar.Message) error
@@ -76,16 +50,43 @@ type Analytic struct {
 
 	// Output producers, is a map from output name to producer.
 	outputs  map[string]pulsar.Producer
+	
+	// Prometheus metrics
+	request_time prometheus.Summary
+	event_size prometheus.Histogram
+	events *prometheus.CounterVec
+
 
 }
 
 // Initialise the Analytic.  
 func (a *Analytic) Init(binding string, outputs []string, h Handler) {
 
+	// Summary metric keeps track of request duration
+	a.request_time = prometheus.NewSummary(prometheus.SummaryOpts{
+		Name: "event_processing_time",
+		Help: "Time spent processing event",
+	})
+
+	// Histogram metric keeps track of event sizes
+	a.event_size = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Name: "event_size",
+		Help: "Size of event message",
+		Buckets: []float64{25, 50, 100, 250, 500, 1000, 2500, 5000,
+			10000, 25000, 50000, 100000, 250000, 500000,
+			1000000, 2500000},
+	})
+
+	// Counter metric, keeps track of success/failure counts.
+	a.events = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "events_total",
+		Help: "Events processed total",
+	}, []string{"state"})
+
 	// Register prometheus metrics
-	prometheus.MustRegister(request_time)
-	prometheus.MustRegister(event_size)
-	prometheus.MustRegister(events)
+	prometheus.MustRegister(a.request_time)
+	prometheus.MustRegister(a.event_size)
+	prometheus.MustRegister(a.events)
 
 	a.handler = h
 
@@ -180,10 +181,10 @@ func (a *Analytic) Run() {
 		msg := cm.Message
 
 		// Update metric with payload length
-		event_size.Observe(float64(len(cm.Message.Payload())))
+		a.event_size.Observe(float64(len(cm.Message.Payload())))
 
 		// Create a timer to time request duration
-		timer := prometheus.NewTimer(request_time)
+		timer := prometheus.NewTimer(a.request_time)
 
 		// Delegate message handling to the Handler interface.
 		err := a.handler.Handle(msg)
@@ -193,9 +194,11 @@ func (a *Analytic) Run() {
 
 		// Record error state
 		if err == nil {
-			events.With(prometheus.Labels{"state": "success"}).Inc()
+			a.events.With(prometheus.Labels{"state": "success"}).
+				Inc()
 		} else {
-			events.With(prometheus.Labels{"state": "failure"}).Inc()
+			a.events.With(prometheus.Labels{"state": "failure"}).
+				Inc()
 			log.Printf("Error: %v\n", err)
 		}
 		a.consumer.Ack(msg)
