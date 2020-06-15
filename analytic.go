@@ -54,10 +54,15 @@ type Analytic struct {
 	request_time prometheus.Summary
 	event_size   prometheus.Histogram
 	events       *prometheus.CounterVec
+
+	// Am I running?
+	running      bool
 }
 
 // Initialise the Analytic.
 func (a *Analytic) Init(binding string, outputs []string, h Handler) {
+
+	a.running = true
 
 	// Summary metric keeps track of request duration
 	a.request_time = prometheus.NewSummary(prometheus.SummaryOpts{
@@ -172,35 +177,49 @@ func (a *Analytic) Run() {
 
 	defer a.consumer.Close()
 
-	for cm := range a.ch {
+	for a.running {
+		select {
+		case cm := <- a.ch:
+			
+			// Message from queue
+			msg := cm.Message
 
-		// Message from queue
-		msg := cm.Message
+			// Update metric with payload length
+			a.event_size.Observe(float64(len(cm.Message.Payload())))
 
-		// Update metric with payload length
-		a.event_size.Observe(float64(len(cm.Message.Payload())))
+			// Create a timer to time request duration
+			timer := prometheus.NewTimer(a.request_time)
 
-		// Create a timer to time request duration
-		timer := prometheus.NewTimer(a.request_time)
+			// Delegate message handling to the Handler interface.
+			err := a.handler.Handle(msg)
 
-		// Delegate message handling to the Handler interface.
-		err := a.handler.Handle(msg)
+			// Update metric with duration
+			timer.ObserveDuration()
 
-		// Update metric with duration
-		timer.ObserveDuration()
+			// Record error state
+			if err == nil {
+				lbls := prometheus.Labels{"state": "success"}
+				a.events.With(lbls).Inc()
+			} else {
+				lbls := prometheus.Labels{"state": "failure"}
+				a.events.With(lbls).Inc()
+				log.Printf("Error: %v\n", err)
+			}
+			a.consumer.Ack(msg)
 
-		// Record error state
-		if err == nil {
-			a.events.With(prometheus.Labels{"state": "success"}).
-				Inc()
-		} else {
-			a.events.With(prometheus.Labels{"state": "failure"}).
-				Inc()
-			log.Printf("Error: %v\n", err)
+		case <-time.After(500 * time.Millisecond):
+
+			// Will return immediately and leave a set of unack'd
+			// messages in the queue.
+
 		}
-		a.consumer.Ack(msg)
+			
 	}
 
+}
+
+func (a *Analytic) Stop() {
+	a.running = false
 }
 
 // Users of the EventAnalytic API implement the Handler interface.
