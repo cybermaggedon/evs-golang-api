@@ -35,6 +35,23 @@ type Handler interface {
 	Handle(msg pulsar.Message) error
 }
 
+type Stoppable interface {
+	Stop()
+}
+
+type Config struct {
+	Input string
+	Output []string
+}
+
+func (c *Config) SetInput(val string) {
+	c.Input = val
+}
+
+func (c *Config) SetOutput(val []string) {
+	c.Output = val
+}
+
 // Describes  Users of the Analytic API implement the Handler interface.
 type Analytic struct {
 
@@ -57,12 +74,23 @@ type Analytic struct {
 
 	// Am I running?
 	running      bool
+
+	// Cancellable context
+	context      context.Context
+	cancel       context.CancelFunc
+	stoppable    Stoppable
+}
+
+func (a *Analytic) RegisterStop(stoppable Stoppable) {
+	a.stoppable = stoppable
 }
 
 // Initialise the Analytic.
 func (a *Analytic) Init(binding string, outputs []string, h Handler) {
 
 	a.running = true
+
+	a.context, a.cancel = context.WithCancel(context.Background())
 
 	// Summary metric keeps track of request duration
 	a.request_time = prometheus.NewSummary(prometheus.SummaryOpts{
