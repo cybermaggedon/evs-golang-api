@@ -18,21 +18,8 @@ import (
 	"time"
 )
 
-const (
-
-	// Pulsar topic persistency, should be persistent or non-persistent
-	persistence = "persistent"
-
-	// Tenant, default is public, only relevant in a multi-tenant deployment
-	tenant = "public"
-
-	// Namespace, default is the default.
-	namespace = "default"
-)
-
-// Users of the Analytic API implement the Handler interface.
-type Handler interface {
-	Handle(msg pulsar.Message) error
+type Stoppable interface {
+	Stop()
 }
 
 // Describes  Users of the Analytic API implement the Handler interface.
@@ -57,12 +44,23 @@ type Analytic struct {
 
 	// Am I running?
 	running      bool
+
+	// Cancellable context
+	context      context.Context
+	cancel       context.CancelFunc
+	stoppable    Stoppable
+}
+
+func (a *Analytic) RegisterStop(stoppable Stoppable) {
+	a.stoppable = stoppable
 }
 
 // Initialise the Analytic.
 func (a *Analytic) Init(binding string, outputs []string, h Handler) {
 
 	a.running = true
+
+	a.context, a.cancel = context.WithCancel(context.Background())
 
 	// Summary metric keeps track of request duration
 	a.request_time = prometheus.NewSummary(prometheus.SummaryOpts{
@@ -223,11 +221,14 @@ func (a *Analytic) Stop() {
 }
 
 // Users of the EventAnalytic API implement the Handler interface.
+/*
 type EventHandler interface {
 	Event(*Event, map[string]string) error
 }
+*/
 
 // EventAnalytic API wraps Pulsar communication and cyberprobe event decoding
+
 type EventAnalytic struct {
 	Analytic
 	handler EventHandler
