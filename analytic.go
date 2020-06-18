@@ -18,10 +18,6 @@ import (
 	"time"
 )
 
-type Stoppable interface {
-	Stop()
-}
-
 // Describes  Users of the Analytic API implement the Handler interface.
 type Analytic struct {
 
