@@ -22,19 +22,6 @@ type Stoppable interface {
 	Stop()
 }
 
-type Config struct {
-	Input string
-	Output []string
-}
-
-func (c *Config) SetInput(val string) {
-	c.Input = val
-}
-
-func (c *Config) SetOutput(val []string) {
-	c.Output = val
-}
-
 // Describes  Users of the Analytic API implement the Handler interface.
 type Analytic struct {
 
