@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"os"
 	"syscall"
+	"log"
 )
 
 type Stoppable interface {
@@ -28,6 +29,7 @@ func (i *Interruptible) RegisterStop(stop Stoppable) {
 	go func() {
 		select {
 		case <- c:
+			log.Print("Signal recevied")
 			i.stop.Stop()
 		}
 	}()
