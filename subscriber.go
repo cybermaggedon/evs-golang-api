@@ -32,6 +32,9 @@ type Handler interface {
 // Describes  Users of the Analytic API implement the Handler interface.
 type Subscriber struct {
 
+	// Analytic name
+	Name string
+
 	// Handler, interface is invoked when events are received.
 	handler Handler
 
@@ -46,8 +49,8 @@ type Subscriber struct {
 	consumer pulsar.Consumer
 
 	// Prometheus metrics
-	request_time prometheus.Summary
-	event_size   prometheus.Histogram
+	request_time *prometheus.SummaryVec
+	event_size   *prometheus.HistogramVec
 	events       *prometheus.CounterVec
 
 	// Am I running?
@@ -62,19 +65,19 @@ func NewSubscriber(name string, binding string, h Handler) (*Subscriber, error) 
 	s.running = true
 
 	// Summary metric keeps track of request duration
-	s.request_time = prometheus.NewSummary(prometheus.SummaryOpts{
+	s.request_time = prometheus.NewSummaryVec(prometheus.SummaryOpts{
 		Name: "event_processing_time",
 		Help: "Time spent processing event",
-	})
+	}, []string{"analytic"})
 
 	// Histogram metric keeps track of event sizes
-	s.event_size = prometheus.NewHistogram(prometheus.HistogramOpts{
+	s.event_size = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name: "event_size",
 		Help: "Size of event message",
 		Buckets: []float64{25, 50, 100, 250, 500, 1000, 2500, 5000,
 			10000, 25000, 50000, 100000, 250000, 500000,
 			1000000, 2500000},
-	})
+	}, []string{"analytic"})
 
 	// Counter metric, keeps track of success/failure counts.
 	s.events = prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -149,10 +152,13 @@ func (s *Subscriber) Run() {
 			msg := cm.Message
 
 			// Update metric with payload length
-			s.event_size.Observe(float64(len(cm.Message.Payload())))
+			lbls := prometheus.Labels{"analytic": s.Name}
+			s.event_size.With(lbls).
+				Observe(float64(len(cm.Message.Payload())))
 
 			// Create a timer to time request duration
-			timer := prometheus.NewTimer(s.request_time)
+			lbls = prometheus.Labels{"analytic": s.Name}
+			timer := prometheus.NewTimer(s.request_time.With(lbls))
 
 			// Delegate message handling to the Handler interface.
 			err := s.handler.Handle(msg)
@@ -162,10 +168,16 @@ func (s *Subscriber) Run() {
 
 			// Record error state
 			if err == nil {
-				lbls := prometheus.Labels{"state": "success"}
+				lbls := prometheus.Labels{
+					"analytic": s.Name,
+					"state": "success",
+				}
 				s.events.With(lbls).Inc()
 			} else {
-				lbls := prometheus.Labels{"state": "failure"}
+				lbls := prometheus.Labels{
+					"analytic": s.Name,
+					"state": "failure",
+				}
 				s.events.With(lbls).Inc()
 				log.Printf("Error: %v\n", err)
 			}

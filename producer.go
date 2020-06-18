@@ -21,7 +21,7 @@ type Producer struct {
 }
 
 // Initialise the Analytic.
-func NewProducer(outputs []string) (*Producer, error) {
+func NewProducer(name string, outputs []string) (*Producer, error) {
 
 	p := &Producer{}
 
