@@ -1,11 +1,9 @@
-
 package evs
 
 import (
 	"context"
 	"fmt"
 	"github.com/apache/pulsar-client-go/pulsar"
-	"github.com/golang/protobuf/proto"
 	"log"
 	"os"
 	"time"
@@ -20,7 +18,6 @@ type Producer struct {
 
 	// Output producers, is a map from output name to producer.
 	outputs map[string]pulsar.Producer
-
 }
 
 // Initialise the Analytic.
@@ -57,7 +54,7 @@ func NewProducer(outputs []string) (*Producer, error) {
 		if err != nil {
 			return nil, err
 		}
-		
+
 		p.outputs[output] = producer
 	}
 
@@ -81,47 +78,5 @@ func (a *Producer) Output(msg pulsar.ProducerMessage) {
 		}
 
 	}
-
-}
-
-// Wraps Pulsar communication and cyberprobe event encoding
-type EventProducer struct {
-	*Producer
-}
-
-// Initialise the analyitc
-func NewEventProducer(outputs []string) (*EventProducer, error) {
-
-	p, err := NewProducer(outputs)
-	if err != nil {
-		return nil, err
-	}
-
-	ep := &EventProducer{
-		Producer: p,
-	}
-	return ep, nil
-}
-
-// Output an event by iterating over all outputs
-func (a *EventProducer) Output(ev *Event, properties map[string]string) error {
-
-	// Marshal event to protobuf
-	b, err := proto.Marshal(ev)
-	if err != nil {
-		return err
-	}
-
-	// Create a ProducerMessage
-	msg := pulsar.ProducerMessage{
-		Payload:    b,
-		Properties: properties,
-		Key:        ev.Id,
-	}
-
-	// Delegate to Analytic.Output to output
-	a.Producer.Output(msg)
-
-	return nil
 
 }

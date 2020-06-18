@@ -1,16 +1,15 @@
-
 package evs
 
 import (
-	"github.com/apache/pulsar-client-go/pulsar"
-	"github.com/prometheus/client_golang/prometheus"
-	"os"
-	"github.com/google/uuid"
 	"fmt"
-	"log"
-	"time"
-	"net/http"
+	"github.com/apache/pulsar-client-go/pulsar"
+	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"log"
+	"net/http"
+	"os"
+	"time"
 )
 
 const (
@@ -52,15 +51,13 @@ type Subscriber struct {
 	events       *prometheus.CounterVec
 
 	// Am I running?
-	running      bool
-
+	running bool
 }
 
 // Initialise the Analytic.
 func NewSubscriber(name string, binding string, h Handler) (*Subscriber, error) {
 
-	s := &Subscriber{
-	}
+	s := &Subscriber{}
 
 	s.running = true
 
@@ -138,15 +135,16 @@ func NewSubscriber(name string, binding string, h Handler) (*Subscriber, error) 
 func (s *Subscriber) Close() {
 	s.consumer.Close()
 	s.client.Close()
-	
+
 }
+
 // Go into the 'run' state getting messages from the consumer and delivering to Handler.
 func (s *Subscriber) Run() {
 
 	for s.running {
 		select {
-		case cm := <- s.ch:
-			
+		case cm := <-s.ch:
+
 			// Message from queue
 			msg := cm.Message
 
@@ -176,7 +174,7 @@ func (s *Subscriber) Run() {
 		case <-time.After(100 * time.Millisecond):
 
 		}
-			
+
 	}
 
 	// Will return immediately and leave a set of unack'd
@@ -209,10 +207,9 @@ func CheckAndStartMetricsService() {
 		http.Handle("/metrics", promhttp.Handler())
 		err := http.ListenAndServe(metric_port, nil)
 		log.Fatal(err)
-	}() 
+	}()
 
 	// Minor naming error maybe.
 	metrics_started = true
 
 }
-

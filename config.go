@@ -1,4 +1,3 @@
-
 package evs
 
 import (
@@ -7,7 +6,7 @@ import (
 )
 
 type Config struct {
-	Input string
+	Input   string
 	Outputs []string
 }
 
@@ -15,7 +14,7 @@ func NewConfig(defbind string) *Config {
 
 	c := &Config{}
 
-	if input, ok := os.LookupEnv("INPUT"); ok  {
+	if input, ok := os.LookupEnv("INPUT"); ok {
 		c.SetInput(input)
 	} else {
 		c.SetInput(defbind)
@@ -36,4 +35,3 @@ func (c *Config) SetInput(val string) {
 func (c *Config) SetOutputs(val []string) {
 	c.Outputs = val
 }
-

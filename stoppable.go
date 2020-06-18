@@ -1,12 +1,11 @@
-
 package evs
 
 import (
 	"context"
-	"os/signal"
-	"os"
-	"syscall"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 type Stoppable interface {
@@ -14,8 +13,8 @@ type Stoppable interface {
 }
 
 type Interruptible struct {
-	Context      context.Context
-	Cancel       context.CancelFunc
+	Context context.Context
+	Cancel  context.CancelFunc
 	stop    Stoppable
 }
 
@@ -28,7 +27,7 @@ func (i *Interruptible) RegisterStop(stop Stoppable) {
 
 	go func() {
 		select {
-		case <- c:
+		case <-c:
 			log.Print("Signal recevied")
 			i.stop.Stop()
 		}
@@ -37,4 +36,3 @@ func (i *Interruptible) RegisterStop(stop Stoppable) {
 	i.Context, i.Cancel = context.WithCancel(context.Background())
 
 }
-
