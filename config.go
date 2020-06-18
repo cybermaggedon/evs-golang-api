@@ -8,7 +8,7 @@ import (
 
 type Config struct {
 	Input string
-	Output []string
+	Outputs []string
 }
 
 func NewConfig(defbind string) *Config {
@@ -21,8 +21,8 @@ func NewConfig(defbind string) *Config {
 		c.SetInput(defbind)
 	}
 
-	if output, ok := os.LookupEnv("OUTPUT"); ok {
-		c.SetOutput(strings.Split(output, ","))
+	if outputs, ok := os.LookupEnv("OUTPUT"); ok {
+		c.SetOutputs(strings.Split(outputs, ","))
 	}
 
 	return c
@@ -33,7 +33,7 @@ func (c *Config) SetInput(val string) {
 	c.Input = val
 }
 
-func (c *Config) SetOutput(val []string) {
-	c.Output = val
+func (c *Config) SetOutputs(val []string) {
+	c.Outputs = val
 }
 
