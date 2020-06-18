@@ -60,7 +60,7 @@ type Subscriber struct {
 // Initialise the Analytic.
 func NewSubscriber(name string, binding string, h Handler) (*Subscriber, error) {
 
-	s := &Subscriber{}
+	s := &Subscriber{name: name}
 
 	s.running = true
 
@@ -83,7 +83,7 @@ func NewSubscriber(name string, binding string, h Handler) (*Subscriber, error) 
 	s.events = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "event_total",
 		Help: "Events processed total",
-	}, []string{"state"})
+	}, []string{"analytic", "state"})
 
 	// Register prometheus metrics
 	prometheus.MustRegister(s.request_time)
@@ -170,13 +170,13 @@ func (s *Subscriber) Run() {
 			if err == nil {
 				lbls := prometheus.Labels{
 					"analytic": s.name,
-					"state": "success",
+					"state":    "success",
 				}
 				s.events.With(lbls).Inc()
 			} else {
 				lbls := prometheus.Labels{
 					"analytic": s.name,
-					"state": "failure",
+					"state":    "failure",
 				}
 				s.events.With(lbls).Inc()
 				log.Printf("Error: %v\n", err)

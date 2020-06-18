@@ -11,9 +11,8 @@ import (
 
 // Describes  Users of the Analytic API implement the Handler interface.
 type Producer struct {
-
 	name string
-	
+
 	// Pulsar client
 	// FIXME: Should be shared across publisher/subscriber
 	client pulsar.Client

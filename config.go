@@ -6,7 +6,7 @@ import (
 )
 
 type Config struct {
-	Name string
+	Name    string
 	Input   string
 	Outputs []string
 }
