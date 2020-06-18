@@ -173,14 +173,14 @@ func (s *Subscriber) Run() {
 			}
 			s.consumer.Ack(msg)
 
-		case <-time.After(500 * time.Millisecond):
-
-			// Will return immediately and leave a set of unack'd
-			// messages in the queue.
+		case <-time.After(100 * time.Millisecond):
 
 		}
 			
 	}
+
+	// Will return immediately and leave a set of unack'd
+	// messages in the queue.
 
 }
 
