@@ -1,14 +1,19 @@
 
 package cyberprobe
 
+import (
+	"os"
+	"strings"
+)
+
 type Config struct {
 	Input string
 	Output []string
 }
 
-func NewConfig(defbind string) *evs.Config {
+func NewConfig(defbind string) *Config {
 
-	c := &evs.Config{}
+	c := &Config{}
 
 	if input, ok := os.LookupEnv("INPUT"); ok  {
 		c.SetInput(input)
