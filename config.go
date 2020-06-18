@@ -6,13 +6,20 @@ import (
 )
 
 type Config struct {
+	Name string
 	Input   string
 	Outputs []string
 }
 
-func NewConfig(defbind string) *Config {
+func NewConfig(defname, defbind string) *Config {
 
 	c := &Config{}
+
+	if name, ok := os.LookupEnv("ANALYTIC_NAME"); ok {
+		c.Name = name
+	} else {
+		c.Name = defname
+	}
 
 	if input, ok := os.LookupEnv("INPUT"); ok {
 		c.SetInput(input)
