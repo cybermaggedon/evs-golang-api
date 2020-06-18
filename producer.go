@@ -12,6 +12,8 @@ import (
 // Describes  Users of the Analytic API implement the Handler interface.
 type Producer struct {
 
+	name string
+	
 	// Pulsar client
 	// FIXME: Should be shared across publisher/subscriber
 	client pulsar.Client
@@ -23,7 +25,7 @@ type Producer struct {
 // Initialise the Analytic.
 func NewProducer(name string, outputs []string) (*Producer, error) {
 
-	p := &Producer{}
+	p := &Producer{name: name}
 
 	// Get Pulsar broker location
 	svc_addr, ok := os.LookupEnv("PULSAR_BROKER")

@@ -33,7 +33,7 @@ type Handler interface {
 type Subscriber struct {
 
 	// Analytic name
-	Name string
+	name string
 
 	// Handler, interface is invoked when events are received.
 	handler Handler
@@ -152,12 +152,12 @@ func (s *Subscriber) Run() {
 			msg := cm.Message
 
 			// Update metric with payload length
-			lbls := prometheus.Labels{"analytic": s.Name}
+			lbls := prometheus.Labels{"analytic": s.name}
 			s.event_size.With(lbls).
 				Observe(float64(len(cm.Message.Payload())))
 
 			// Create a timer to time request duration
-			lbls = prometheus.Labels{"analytic": s.Name}
+			lbls = prometheus.Labels{"analytic": s.name}
 			timer := prometheus.NewTimer(s.request_time.With(lbls))
 
 			// Delegate message handling to the Handler interface.
@@ -169,13 +169,13 @@ func (s *Subscriber) Run() {
 			// Record error state
 			if err == nil {
 				lbls := prometheus.Labels{
-					"analytic": s.Name,
+					"analytic": s.name,
 					"state": "success",
 				}
 				s.events.With(lbls).Inc()
 			} else {
 				lbls := prometheus.Labels{
-					"analytic": s.Name,
+					"analytic": s.name,
 					"state": "failure",
 				}
 				s.events.With(lbls).Inc()
