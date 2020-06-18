@@ -1,5 +1,5 @@
 
-package cyberprobe
+package evs
 
 import (
 	"github.com/apache/pulsar-client-go/pulsar"
@@ -36,7 +36,7 @@ func NewEventSubscriber(name string, binding string, e EventHandler) (*EventSubs
 // Internal Handler implementation of EventAnalytic, decodes messages as cyberprobe events
 // and delegates to the EventHandler interface for processing.
 func (s *EventSubscriber) Handle(msg pulsar.Message) error {
-	ev := &Event{}
+`	ev := &Event{}
 	err := proto.Unmarshal(msg.Payload(), ev)
 	if err != nil {
 		return err

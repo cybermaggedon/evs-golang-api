@@ -1,5 +1,5 @@
 
-package cyberprobe
+package evs
 
 import (
 	"os"
