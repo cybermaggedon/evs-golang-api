@@ -81,7 +81,7 @@ func NewSubscriber(name string, binding string, h Handler) (*Subscriber, error) 
 
 	// Counter metric, keeps track of success/failure counts.
 	s.events = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "events_total",
+		Name: "event_total",
 		Help: "Events processed total",
 	}, []string{"state"})
 
