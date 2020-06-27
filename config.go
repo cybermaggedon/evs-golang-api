@@ -11,7 +11,7 @@ type Config struct {
 	Outputs []string
 }
 
-func NewConfig(defname, defbind string) *Config {
+func NewConfig(defname, defbind string, defout []string) *Config {
 
 	c := &Config{}
 
@@ -29,6 +29,8 @@ func NewConfig(defname, defbind string) *Config {
 
 	if outputs, ok := os.LookupEnv("OUTPUT"); ok {
 		c.SetOutputs(strings.Split(outputs, ","))
+	}  else {
+		c.SetOutputs(defout)
 	}
 
 	return c
