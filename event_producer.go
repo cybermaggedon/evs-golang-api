@@ -12,9 +12,9 @@ type EventProducer struct {
 }
 
 // Initialise the analyitc
-func NewEventProducer(name string, outputs []string) (*EventProducer, error) {
+func NewEventProducer(name string, c HasOutputTopics) (*EventProducer, error) {
 
-	p, err := NewProducer(name, outputs)
+	p, err := NewProducer(name, c)
 	if err != nil {
 		return nil, err
 	}

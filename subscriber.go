@@ -45,7 +45,7 @@ type Subscriber struct {
 }
 
 // Initialise the Analytic.
-func NewSubscriber(name string, topic string, h Handler) (*Subscriber, error) {
+func NewSubscriber(name string, c HasInputTopics, h Handler) (*Subscriber, error) {
 
 	s := &Subscriber{name: name}
 
@@ -104,7 +104,7 @@ func NewSubscriber(name string, topic string, h Handler) (*Subscriber, error) {
 
 	// Consumer options
 	consumerOpts := pulsar.ConsumerOptions{
-		Topic:            topic,
+		Topic:            c.GetInputTopic(),
 		SubscriptionName: subs,
 		Type:             pulsar.Shared,
 		MessageChannel:   s.ch,

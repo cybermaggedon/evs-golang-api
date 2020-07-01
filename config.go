@@ -106,6 +106,14 @@ func (c *Config) GetInputTopic() string {
 		c.Namespace, c.Input)
 }
 
+type HasInputTopics interface {
+	GetInputTopic() string
+}
+
+type HasOutputTopics interface {
+	GetOutputTopics() []string
+}
+
 func (c *Config) GetOutputTopics() []string {
 	out := make([]string, len(c.Outputs))
 	for i, v := range c.Outputs {

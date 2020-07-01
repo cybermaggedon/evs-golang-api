@@ -21,9 +21,10 @@ type Producer struct {
 }
 
 // Initialise the Analytic.
-func NewProducer(name string, topics []string) (*Producer, error) {
+func NewProducer(name string, c HasOutputTopics) (*Producer, error) {
 
 	p := &Producer{name: name}
+	topics := c.GetOutputTopics()
 
 	// Get Pulsar broker location
 	svc_addr, ok := os.LookupEnv("PULSAR_BROKER")

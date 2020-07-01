@@ -18,11 +18,11 @@ type EventSubscriber struct {
 }
 
 // Initialise the analyitc
-func NewEventSubscriber(name string, binding string, e EventHandler) (*EventSubscriber, error) {
+func NewEventSubscriber(name string, c HasInputTopics, e EventHandler) (*EventSubscriber, error) {
 	s := &EventSubscriber{}
 
 	var err error
-	s.Subscriber, err = NewSubscriber(name, binding, s)
+	s.Subscriber, err = NewSubscriber(name, c, s)
 	if err != nil {
 		return nil, err
 	}
