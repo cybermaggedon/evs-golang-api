@@ -45,8 +45,9 @@ type Subscriber struct {
 }
 
 // Initialise the Analytic.
-func NewSubscriber(name string, c HasInputTopics, h Handler) (*Subscriber, error) {
+func NewSubscriber(c HasInputTopics, h Handler) (*Subscriber, error) {
 
+	name := c.GetName()
 	s := &Subscriber{name: name}
 
 	s.running = true
