@@ -107,10 +107,12 @@ func (c *Config) GetInputTopic() string {
 }
 
 type HasInputTopics interface {
+	GetName() string
 	GetInputTopic() string
 }
 
 type HasOutputTopics interface {
+	GetName() string
 	GetOutputTopics() []string
 }
 
@@ -121,4 +123,8 @@ func (c *Config) GetOutputTopics() []string {
 			c.Namespace, v)
 	}
 	return out
+}
+
+func (c *Config) GetName() string {
+	return c.Name
 }
