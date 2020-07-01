@@ -1,7 +1,6 @@
 package evs
 
 import (
-	"fmt"
 	"github.com/apache/pulsar-client-go/pulsar"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
@@ -10,18 +9,6 @@ import (
 	"net/http"
 	"os"
 	"time"
-)
-
-const (
-
-	// Pulsar topic persistency, should be persistent or non-persistent
-	persistence = "persistent"
-
-	// Tenant, default is public, only relevant in a multi-tenant deployment
-	tenant = "public"
-
-	// Namespace, default is the default.
-	namespace = "default"
 )
 
 // Users of the Analytic API implement the Handler interface.
@@ -58,7 +45,7 @@ type Subscriber struct {
 }
 
 // Initialise the Analytic.
-func NewSubscriber(name string, binding string, h Handler) (*Subscriber, error) {
+func NewSubscriber(name string, topic string, h Handler) (*Subscriber, error) {
 
 	s := &Subscriber{name: name}
 
@@ -115,9 +102,6 @@ func NewSubscriber(name string, binding string, h Handler) (*Subscriber, error) 
 	// Subscriber name is a new UUID
 	subs := name + "-" + uuid.New().String()
 
-	// Create topic name
-	topic := fmt.Sprintf("%s://%s/%s/%s", persistence, tenant, namespace, binding)
-
 	// Consumer options
 	consumerOpts := pulsar.ConsumerOptions{
 		Topic:            topic,
@@ -141,7 +125,8 @@ func (s *Subscriber) Close() {
 
 }
 
-// Go into the 'run' state getting messages from the consumer and delivering to Handler.
+// Go into the 'run' state getting messages from the consumer and delivering
+// to Handler.
 func (s *Subscriber) Run() {
 
 	for s.running {
