@@ -30,7 +30,7 @@ func NewProducer(c HasOutputTopics) (*Producer, error) {
 	topics := c.GetOutputTopics()
 	p := &Producer{
 		name: name,
-		isWorking: true,
+		isWorking: false,
 	}
 
 	// Get Pulsar broker location
@@ -87,7 +87,7 @@ func (a *Producer) sendCallback(id pulsar.MessageID, m *pulsar.ProducerMessage,
 		
 	} else {
 		if !a.isWorking {
-			log.Print("Working again, delivery successful")
+			log.Print("Delivery is working")
 			a.isWorking = true
 		}
 	}
@@ -100,10 +100,8 @@ func (a *Producer) Output(msg *pulsar.ProducerMessage) {
 
 	for _, producer := range a.producers {
 
-		for {
-			producer.SendAsync(context.Background(), msg,
-				a.sendCallback)
-		}
+		producer.SendAsync(context.Background(), msg,
+			a.sendCallback)
 
 	}
 
