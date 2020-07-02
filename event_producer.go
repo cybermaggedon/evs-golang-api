@@ -42,7 +42,7 @@ func (a *EventProducer) Output(ev *pb.Event, properties map[string]string) error
 	}
 
 	// Delegate to Analytic.Output to output
-	a.Producer.Output(msg)
+	a.Producer.Output(&msg)
 
 	return nil
 

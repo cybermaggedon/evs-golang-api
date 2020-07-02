@@ -18,6 +18,9 @@ type Producer struct {
 
 	// Output producers, is a map from output name to producer.
 	producers map[string]pulsar.Producer
+
+	// Tracking current state of delivery
+	isWorking bool
 }
 
 // Initialise the Analytic.
@@ -25,7 +28,10 @@ func NewProducer(c HasOutputTopics) (*Producer, error) {
 
 	name := c.GetName()
 	topics := c.GetOutputTopics()
-	p := &Producer{name: name}
+	p := &Producer{
+		name: name,
+		isWorking: true,
+	}
 
 	// Get Pulsar broker location
 	svc_addr, ok := os.LookupEnv("PULSAR_BROKER")
@@ -61,20 +67,42 @@ func NewProducer(c HasOutputTopics) (*Producer, error) {
 
 }
 
+func (a *Producer) sendCallback(id pulsar.MessageID, m *pulsar.ProducerMessage,
+	err error) {
+	if err != nil {
+
+		if a.isWorking {
+			log.Printf("Pulsar Send: %v", err)
+			log.Print("Degraded, delivery failures will be retried")
+			a.isWorking = false
+		}
+		
+		time.Sleep(1000 * time.Millisecond)
+
+		// FIXME: The message only failed on one output, not all of
+		// them.  Should only retry the failed producer.
+
+		// Retry message...
+		a.Output(m)
+		
+	} else {
+		if !a.isWorking {
+			log.Print("Working again, delivery successful")
+			a.isWorking = true
+		}
+	}
+	
+}
+
 // Output a message by iterating over all outputs.  Retries until message is
 // sent.
-func (a *Producer) Output(msg pulsar.ProducerMessage) {
+func (a *Producer) Output(msg *pulsar.ProducerMessage) {
 
 	for _, producer := range a.producers {
 
 		for {
-			_, err := producer.Send(context.Background(), &msg)
-			if err != nil {
-				log.Printf("Pulsar Send: %v (will retry)", err)
-				time.Sleep(time.Second)
-				continue
-			}
-			break
+			producer.SendAsync(context.Background(), msg,
+				a.sendCallback)
 		}
 
 	}
