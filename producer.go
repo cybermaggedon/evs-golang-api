@@ -63,6 +63,8 @@ func NewProducer(c HasOutputTopics) (*Producer, error) {
 		p.producers[topic] = prod
 	}
 
+	CheckAndStartMetricsService()
+
 	return p, nil
 
 }
